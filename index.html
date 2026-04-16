@@ -254,24 +254,20 @@ permalink: /index.html
             border: 1px solid rgba(212,175,55,0.3);
         }
         
-        .footer-links {
+        .footer-sitemap {
             text-align: center;
             margin-top: 40px;
             padding: 20px 0;
             border-top: 1px solid rgba(212,175,55,0.2);
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            flex-wrap: wrap;
         }
         
-        .footer-links a {
+        .footer-sitemap a {
             color: #888;
             font-size: 0.9em;
             border-bottom: none;
         }
         
-        .footer-links a:hover {
+        .footer-sitemap a:hover {
             color: var(--primary);
         }
     </style>
@@ -573,13 +569,10 @@ permalink: /index.html
             </section>
             
             <!-- ============================================
-                 FOOTER WITH SITEMAP LINK
+                 FOOTER - SITEMAP ONLY
                  ============================================ -->
-            <div class="footer-links">
+            <div class="footer-sitemap">
                 <a href="#" id="sitemap-footer-link">📄 Sitemap XML</a>
-                <a href="#" class="dynamic-link" data-variant="privacy">🔒 Privacy</a>
-                <a href="#" class="dynamic-link" data-variant="terms">📋 Terms</a>
-                <a href="#" class="dynamic-link" data-variant="contact">📧 Contact</a>
             </div>
         </div>
     </main>
@@ -709,7 +702,6 @@ permalink: /index.html
     })();
     </script>
 
-<br><br><br>
 
 {% include footer.html %}
 </div>
