@@ -1,52 +1,27 @@
-// /js/opop2-neon.js
+// /js/opop2-sidebar.js
 
-function showNeonPopup() {
-    if (document.getElementById('neonPopup')) return;
+function showSidebarPopup() {
+    if (document.getElementById('sidebarPopup')) return;
 
-    // Main container
+    // Main container - slides from right
     const container = document.createElement('div');
-    container.id = 'neonPopup';
+    container.id = 'sidebarPopup';
     container.style.cssText = `
         position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.8);
-        width: 92%;
-        max-width: 900px;
-        height: 85vh;
+        top: 0;
+        right: 0;
+        width: 100%;
+        max-width: 500px;
+        height: 100vh;
         z-index: 99999;
         background: #0a0a0a;
-        border-radius: 20px;
-        border: 2px solid #00ff41;
-        box-shadow: 
-            0 0 30px rgba(0, 255, 65, 0.3),
-            inset 0 0 30px rgba(0, 255, 65, 0.05),
-            0 0 60px rgba(0, 255, 65, 0.1);
-        animation: neonPulse 2s ease-in-out infinite;
+        transform: translateX(100%);
+        animation: slideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        box-shadow: -10px 0 40px rgba(0,0,0,0.8);
         overflow: hidden;
-        animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     `;
 
-    // Scanline effect overlay
-    const scanlines = document.createElement('div');
-    scanlines.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(0, 255, 65, 0.03) 2px,
-            rgba(0, 255, 65, 0.03) 4px
-        );
-        pointer-events: none;
-        z-index: 5;
-    `;
-
-    // Header with neon glow
+    // Header with gradient
     const header = document.createElement('div');
     header.style.cssText = `
         position: absolute;
@@ -55,93 +30,73 @@ function showNeonPopup() {
         right: 0;
         z-index: 10;
         padding: 20px 25px;
-        background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, transparent 100%);
+        background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%);
         display: flex;
         justify-content: space-between;
         align-items: center;
     `;
 
+    // Title
     const title = document.createElement('div');
     title.style.cssText = `
-        color: #00ff41;
-        font-family: 'Courier New', monospace;
-        font-size: 20px;
-        font-weight: bold;
-        text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
-        letter-spacing: 4px;
+        color: white;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
     `;
-    title.innerHTML = '> ACCESS_GRANTED';
+    title.innerHTML = '🎬 Premium Content';
 
-    // Close button - neon style
+    // Close button - minimal
     const closeBtn = document.createElement('button');
     closeBtn.style.cssText = `
-        background: rgba(0, 255, 65, 0.1);
-        border: 1px solid #00ff41;
-        color: #00ff41;
-        width: 45px;
-        height: 45px;
-        border-radius: 8px;
-        font-size: 22px;
+        background: rgba(255,255,255,0.1);
+        border: none;
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        font-size: 20px;
         cursor: pointer;
         transition: all 0.3s ease;
-        text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-        box-shadow: 0 0 15px rgba(0, 255, 65, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
     `;
     closeBtn.innerHTML = '✕';
     closeBtn.onmouseover = () => {
-        closeBtn.style.background = 'rgba(0, 255, 65, 0.3)';
-        closeBtn.style.boxShadow = '0 0 30px rgba(0, 255, 65, 0.3)';
+        closeBtn.style.background = 'rgba(255,69,69,0.4)';
     };
     closeBtn.onmouseout = () => {
-        closeBtn.style.background = 'rgba(0, 255, 65, 0.1)';
-        closeBtn.style.boxShadow = '0 0 15px rgba(0, 255, 65, 0.1)';
+        closeBtn.style.background = 'rgba(255,255,255,0.1)';
     };
-    closeBtn.onclick = closeNeonPopup;
+    closeBtn.onclick = closeSidebarPopup;
 
-    // Timer - terminal style
+    // Timer - bottom left corner
     const timer = document.createElement('div');
     timer.style.cssText = `
         position: absolute;
         bottom: 30px;
-        right: 30px;
-        z-index: 10;
-        background: rgba(0,0,0,0.9);
-        border: 1px solid rgba(0, 255, 65, 0.3);
-        padding: 12px 20px;
-        border-radius: 6px;
-        color: #00ff41;
-        font-family: 'Courier New', monospace;
-        font-size: 14px;
-        box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    `;
-    timer.innerHTML = `
-        <span style="opacity:0.5;">[</span>
-        <span id="neonTimer" style="font-weight:bold; font-size:18px;">15</span>
-        <span style="opacity:0.5;">s]</span>
-        <span style="opacity:0.5; margin-left:5px;">⏳</span>
-    `;
-
-    // Status indicator
-    const status = document.createElement('div');
-    status.style.cssText = `
-        position: absolute;
-        bottom: 30px;
         left: 30px;
         z-index: 10;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(10px);
+        padding: 15px 25px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.08);
+        color: white;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 13px;
         display: flex;
         align-items: center;
-        gap: 10px;
-        color: #00ff41;
-        font-family: 'Courier New', monospace;
-        font-size: 12px;
-        opacity: 0.6;
+        gap: 12px;
     `;
-    status.innerHTML = `
-        <div style="width:8px;height:8px;border-radius:50%;background:#00ff41;box-shadow:0 0 15px #00ff41;animation:blink 1s infinite;"></div>
-        <span>LIVE</span>
+    timer.innerHTML = `
+        <div style="width: 4px; height: 30px; background: linear-gradient(to bottom, #ff6b6b, #ffd93d); border-radius: 2px;"></div>
+        <div>
+            <div style="font-size: 11px; opacity: 0.5; margin-bottom: 2px;">CLOSES IN</div>
+            <strong id="sidebarTimer" style="font-size: 20px;">15</strong><span style="font-size: 14px; opacity: 0.5;">s</span>
+        </div>
     `;
 
     // Iframe
@@ -168,7 +123,7 @@ function showNeonPopup() {
     iframe.setAttribute('allow', 'autoplay; fullscreen');
     iframe.setAttribute('allowfullscreen', '');
 
-    // Background overlay
+    // Backdrop overlay (click outside to close)
     const backdrop = document.createElement('div');
     backdrop.style.cssText = `
         position: fixed;
@@ -177,9 +132,12 @@ function showNeonPopup() {
         width: 100%;
         height: 100vh;
         z-index: 99998;
-        background: rgba(0,0,0,0.85);
-        animation: fadeIn 0.5s ease forwards;
+        background: rgba(0,0,0,0.5);
+        opacity: 0;
+        animation: fadeIn 0.5s ease 0.1s forwards;
+        cursor: pointer;
     `;
+    backdrop.onclick = closeSidebarPopup;
 
     // Assemble
     frame.appendChild(iframe);
@@ -187,8 +145,6 @@ function showNeonPopup() {
     header.appendChild(closeBtn);
     container.appendChild(header);
     container.appendChild(timer);
-    container.appendChild(status);
-    container.appendChild(scanlines);
     container.appendChild(frame);
     
     document.body.appendChild(backdrop);
@@ -198,27 +154,13 @@ function showNeonPopup() {
     // Animations
     const style = document.createElement('style');
     style.textContent = `
-        @keyframes neonPulse {
-            0%, 100% { box-shadow: 0 0 30px rgba(0, 255, 65, 0.3), inset 0 0 30px rgba(0, 255, 65, 0.05); }
-            50% { box-shadow: 0 0 50px rgba(0, 255, 65, 0.5), inset 0 0 50px rgba(0, 255, 65, 0.1); }
-        }
-        @keyframes popIn {
-            from { 
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.8);
-            }
-            to { 
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
-            }
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
         }
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
         }
     `;
     document.head.appendChild(style);
@@ -227,28 +169,23 @@ function showNeonPopup() {
     let timeLeft = 15;
     const timerInterval = setInterval(() => {
         timeLeft--;
-        const timerEl = document.getElementById('neonTimer');
+        const timerEl = document.getElementById('sidebarTimer');
         if (timerEl) timerEl.textContent = timeLeft;
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             timer.style.opacity = '0.3';
             timer.style.transition = 'opacity 0.5s ease';
-            status.innerHTML = `
-                <div style="width:8px;height:8px;border-radius:50%;background:#ff6b6b;box-shadow:0 0 15px #ff6b6b;"></div>
-                <span>UNLOCKED</span>
-            `;
         }
     }, 1000);
 }
 
-function closeNeonPopup() {
-    const container = document.getElementById('neonPopup');
-    const backdrop = document.querySelector('#neonPopup ~ div');
+function closeSidebarPopup() {
+    const container = document.getElementById('sidebarPopup');
+    const backdrop = document.querySelector('#sidebarPopup ~ div');
     
     if (container) {
-        container.style.transform = 'translate(-50%, -50%) scale(0.8)';
-        container.style.opacity = '0';
-        container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        container.style.transform = 'translateX(100%)';
+        container.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
         setTimeout(() => {
             container.remove();
             if (backdrop) backdrop.remove();
