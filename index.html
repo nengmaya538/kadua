@@ -419,13 +419,19 @@
             var canonicalTag = document.getElementById('canonicalTag');
             var url = new URL(window.location.href);
             var page = url.searchParams.get('page');
+            var tag = url.searchParams.get('tag');
             
+            // Selalu prioritaskan page
             if (page && page !== '1') {
-                canonicalTag.href = window.location.href;
+                url.searchParams.set('page', page);
             } else {
                 url.searchParams.delete('page');
-                canonicalTag.href = url.toString();
             }
+            
+            // Hapus tag dari canonical
+            url.searchParams.delete('tag');
+            
+            canonicalTag.href = url.toString();
         }
         
         updateCanonicalTag();
@@ -540,31 +546,37 @@
         var itemsPerPage = 15;
         var totalPages = Math.ceil(videoQueries.length / itemsPerPage);
         
-        // Get current page from URL ?page=
-        function getCurrentPage() {
+        // Get current page and tag from URL
+        function getURLParams() {
             var urlParams = new URLSearchParams(window.location.search);
             var page = parseInt(urlParams.get('page')) || 1;
+            var tag = urlParams.get('tag') || null;
+            
             if (page < 1) page = 1;
             if (page > totalPages) page = totalPages;
-            return page;
+            
+            return { page: page, tag: tag };
         }
         
-        var currentPage = getCurrentPage();
+        var urlState = getURLParams();
+        var currentPage = urlState.page;
+        var activeTag = urlState.tag;
         
-        // Update title, h1, dan meta description berdasarkan halaman
-        function updateHeadTags(page) {
-            if (page > 1) {
+        // Update title, h1, dan meta description berdasarkan halaman dan tag
+        function updateHeadTags(page, tag) {
+            // Update title
+            if (tag) {
+                document.title = formatTitle(tag) + ' - ' + baseTitle;
+                document.querySelector('h1').textContent = formatTitle(tag) + ' - ' + baseTitle;
+            } else if (page > 1) {
                 document.title = baseTitle + ' - Page ' + page;
-            } else {
-                document.title = baseTitle;
-            }
-            
-            if (page > 1) {
                 document.querySelector('h1').textContent = baseTitle + ' - Page ' + page;
             } else {
+                document.title = baseTitle;
                 document.querySelector('h1').textContent = baseTitle;
             }
             
+            // Update meta description
             var start = (page - 1) * itemsPerPage;
             var end = Math.min(start + itemsPerPage, videoQueries.length);
             var pageQueries = videoQueries.slice(start, end);
@@ -573,7 +585,12 @@
                 return formatTitle(query);
             });
             
-            var metaDescription = 'Watch: ' + descriptions.join(', ') + '. Video Gallery collection.';
+            var metaDescription;
+            if (tag) {
+                metaDescription = 'Watch videos tagged with ' + tag + '. ' + descriptions.join(', ') + '. Video Gallery collection.';
+            } else {
+                metaDescription = 'Watch: ' + descriptions.join(', ') + '. Video Gallery collection.';
+            }
             
             if (metaDescription.length > 155) {
                 metaDescription = metaDescription.substring(0, 152) + '...';
@@ -582,21 +599,31 @@
             document.getElementById('metaDescription').content = metaDescription;
         }
         
-        // Update URL without reload
-        function updateURL(page) {
+        // Update URL tanpa reload - page dulu, tag kemudian
+        function updateURL(page, tag) {
             var url = new URL(window.location);
+            
+            // Page selalu diutamakan
             if (page > 1) {
                 url.searchParams.set('page', page);
             } else {
                 url.searchParams.delete('page');
             }
+            
+            // Tag setelah page
+            if (tag) {
+                url.searchParams.set('tag', tag);
+            } else {
+                url.searchParams.delete('tag');
+            }
+            
             window.history.pushState({}, '', url);
             updateCanonicalTag();
-            updateHeadTags(page);
+            updateHeadTags(page, tag);
         }
         
         // Generate breadcrumb
-        function renderBreadcrumb(currentTag) {
+        function renderBreadcrumb(page, tag) {
             var breadcrumb = document.getElementById('breadcrumb');
             breadcrumb.innerHTML = '';
             
@@ -609,7 +636,7 @@
             homeLink.textContent = 'Home';
             homeLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                goToPage(1);
+                navigateTo(1, null);
             });
             homeItem.appendChild(homeLink);
             breadcrumb.appendChild(homeItem);
@@ -629,38 +656,41 @@
             galleryLink.textContent = 'Video Gallery';
             galleryLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                goToPage(1);
+                navigateTo(1, null);
             });
             galleryItem.appendChild(galleryLink);
             breadcrumb.appendChild(galleryItem);
             
-            // Jika ada tag yang diklik
-            if (currentTag) {
+            // Page (jika > 1)
+            if (page > 1) {
                 var sep2 = document.createElement('span');
                 sep2.className = 'breadcrumb-separator';
                 sep2.textContent = '›';
                 breadcrumb.appendChild(sep2);
                 
-                var tagItem = document.createElement('span');
-                tagItem.className = 'breadcrumb-item';
-                var tagSpan = document.createElement('span');
-                tagSpan.className = 'breadcrumb-current';
-                tagSpan.textContent = currentTag;
-                tagItem.appendChild(tagSpan);
-                breadcrumb.appendChild(tagItem);
-            } else if (currentPage > 1) {
+                var pageItem = document.createElement('span');
+                pageItem.className = 'breadcrumb-item';
+                var pageSpan = document.createElement('span');
+                pageSpan.className = 'breadcrumb-current';
+                pageSpan.textContent = 'Page ' + page;
+                pageItem.appendChild(pageSpan);
+                breadcrumb.appendChild(pageItem);
+            }
+            
+            // Tag (jika ada)
+            if (tag) {
                 var sep3 = document.createElement('span');
                 sep3.className = 'breadcrumb-separator';
                 sep3.textContent = '›';
                 breadcrumb.appendChild(sep3);
                 
-                var pageItem = document.createElement('span');
-                pageItem.className = 'breadcrumb-item';
-                var pageSpan = document.createElement('span');
-                pageSpan.className = 'breadcrumb-current';
-                pageSpan.textContent = 'Page ' + currentPage;
-                pageItem.appendChild(pageSpan);
-                breadcrumb.appendChild(pageItem);
+                var tagItem = document.createElement('span');
+                tagItem.className = 'breadcrumb-item';
+                var tagSpan = document.createElement('span');
+                tagSpan.className = 'breadcrumb-current';
+                tagSpan.textContent = tag;
+                tagItem.appendChild(tagSpan);
+                breadcrumb.appendChild(tagItem);
             }
         }
         
@@ -672,17 +702,15 @@
             var targetPage = Math.floor(index / itemsPerPage) + 1;
             
             if (targetPage !== currentPage) {
-                goToPage(targetPage);
+                navigateTo(targetPage, query);
                 
                 setTimeout(function() {
                     scrollToVideo(index);
                 }, 300);
             } else {
+                navigateTo(targetPage, query);
                 scrollToVideo(index);
             }
-            
-            // Update breadcrumb dengan tag
-            renderBreadcrumb(query);
         }
         
         // Fungsi scroll ke video dan highlight
@@ -708,7 +736,7 @@
             
             videoQueries.forEach(function(query, index) {
                 var tagLink = document.createElement('a');
-                tagLink.href = '#video-' + index;
+                tagLink.href = '?tag=' + encodeURIComponent(query);
                 tagLink.className = 'tag-link';
                 tagLink.textContent = query;
                 tagLink.setAttribute('aria-label', 'Tag: ' + query);
@@ -763,8 +791,6 @@
             
             var indicator = document.getElementById('pageIndicator');
             indicator.textContent = 'Page ' + page + ' of ' + totalPages + ' (' + videoQueries.length + ' videos)';
-            
-            updateHeadTags(page);
         }
         
         // Generate pagination
@@ -782,7 +808,7 @@
             prevBtn.disabled = currentPage === 1;
             prevBtn.setAttribute('aria-label', 'Previous page');
             prevBtn.addEventListener('click', function() {
-                goToPage(currentPage - 1);
+                navigateTo(currentPage - 1, null);
             });
             pagination.appendChild(prevBtn);
             
@@ -794,7 +820,7 @@
                         pageBtn.classList.add('active');
                     }
                     pageBtn.addEventListener('click', function() {
-                        goToPage(pageNum);
+                        navigateTo(pageNum, null);
                     });
                     pagination.appendChild(pageBtn);
                 })(i);
@@ -805,37 +831,44 @@
             nextBtn.disabled = currentPage === totalPages;
             nextBtn.setAttribute('aria-label', 'Next page');
             nextBtn.addEventListener('click', function() {
-                goToPage(currentPage + 1);
+                navigateTo(currentPage + 1, null);
             });
             pagination.appendChild(nextBtn);
         }
         
-        // Navigate to page
-        function goToPage(page) {
-            if (page < 1 || page > totalPages) return;
+        // Navigate to page/tag
+        function navigateTo(page, tag) {
             currentPage = page;
-            updateURL(page);
+            activeTag = tag;
+            updateURL(page, tag);
             renderVideos(page);
             renderPagination(page);
-            renderBreadcrumb(null);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            renderBreadcrumb(page, tag);
+            
+            if (!tag) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         }
         
         // Handle browser back/forward
         window.addEventListener('popstate', function() {
-            currentPage = getCurrentPage();
+            var state = getURLParams();
+            currentPage = state.page;
+            activeTag = state.tag;
+            
             updateCanonicalTag();
-            updateHeadTags(currentPage);
+            updateHeadTags(currentPage, activeTag);
             renderVideos(currentPage);
             renderPagination(currentPage);
-            renderBreadcrumb(null);
+            renderBreadcrumb(currentPage, activeTag);
         });
         
         // Initial render
         renderVideos(currentPage);
         renderPagination(currentPage);
         renderTagCloud();
-        renderBreadcrumb(null);
+        renderBreadcrumb(currentPage, activeTag);
+        updateHeadTags(currentPage, activeTag);
     </script>
 </body>
 </html>
