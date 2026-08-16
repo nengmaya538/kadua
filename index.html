@@ -1,7 +1,3 @@
----
-layout: null
----
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,6 +43,59 @@ layout: null
         .container {
             max-width: 1200px;
             margin: 0 auto;
+        }
+        
+        /* Breadcrumb */
+        .breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            background: #111;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: clamp(9px, 2vw, 11px);
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: thin;
+            scrollbar-color: #333 #111;
+        }
+        .breadcrumb::-webkit-scrollbar {
+            height: 4px;
+        }
+        .breadcrumb::-webkit-scrollbar-track {
+            background: #111;
+        }
+        .breadcrumb::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 2px;
+        }
+        .breadcrumb-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .breadcrumb-link {
+            text-decoration: none;
+            color: #999;
+            transition: color .3s;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .breadcrumb-link:hover {
+            color: #FF9800;
+        }
+        .breadcrumb-separator {
+            color: #444;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+        .breadcrumb-current {
+            color: #FF9800;
+            font-weight: 600;
         }
         
         .grid {
@@ -301,6 +350,12 @@ layout: null
             }
             .subtitle { margin-bottom: 30px; font-size: 13px; }
             
+            .breadcrumb {
+                padding: 12px 20px;
+                font-size: 12px;
+                margin-bottom: 25px;
+            }
+            
             .grid {
                 grid-template-columns: repeat(3, 1fr);
                 gap: 12px;
@@ -385,6 +440,9 @@ layout: null
     <h1>Video Gallery</h1>
     <p class="subtitle">Collection of Exclusive Videos</p>
     <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
+        
         <div class="grid" id="videoGrid"></div>
         <div class="page-indicator" id="pageIndicator"></div>
         <div class="pagination" id="pagination"></div>
@@ -444,7 +502,7 @@ layout: null
         
         // Fungsi durasi konsisten berdasarkan index
         function getDuration(index) {
-            var totalSeconds = 300 + (index * 137) % 1800; // 5:00 - 35:00
+            var totalSeconds = 300 + (index * 137) % 1800;
             var minutes = Math.floor(totalSeconds / 60);
             var seconds = totalSeconds % 60;
             return minutes + ':' + String(seconds).padStart(2, '0');
@@ -493,16 +551,20 @@ layout: null
         
         var currentPage = getCurrentPage();
         
-        // Update title dan meta description berdasarkan halaman
+        // Update title, h1, dan meta description berdasarkan halaman
         function updateHeadTags(page) {
-            // Update title
             if (page > 1) {
                 document.title = baseTitle + ' - Page ' + page;
             } else {
                 document.title = baseTitle;
             }
             
-            // Update meta description
+            if (page > 1) {
+                document.querySelector('h1').textContent = baseTitle + ' - Page ' + page;
+            } else {
+                document.querySelector('h1').textContent = baseTitle;
+            }
+            
             var start = (page - 1) * itemsPerPage;
             var end = Math.min(start + itemsPerPage, videoQueries.length);
             var pageQueries = videoQueries.slice(start, end);
@@ -533,6 +595,75 @@ layout: null
             updateHeadTags(page);
         }
         
+        // Generate breadcrumb
+        function renderBreadcrumb(currentTag) {
+            var breadcrumb = document.getElementById('breadcrumb');
+            breadcrumb.innerHTML = '';
+            
+            // Home
+            var homeItem = document.createElement('span');
+            homeItem.className = 'breadcrumb-item';
+            var homeLink = document.createElement('a');
+            homeLink.href = '#';
+            homeLink.className = 'breadcrumb-link';
+            homeLink.textContent = 'Home';
+            homeLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                goToPage(1);
+            });
+            homeItem.appendChild(homeLink);
+            breadcrumb.appendChild(homeItem);
+            
+            // Separator
+            var sep1 = document.createElement('span');
+            sep1.className = 'breadcrumb-separator';
+            sep1.textContent = '›';
+            breadcrumb.appendChild(sep1);
+            
+            // Video Gallery
+            var galleryItem = document.createElement('span');
+            galleryItem.className = 'breadcrumb-item';
+            var galleryLink = document.createElement('a');
+            galleryLink.href = '#';
+            galleryLink.className = 'breadcrumb-link';
+            galleryLink.textContent = 'Video Gallery';
+            galleryLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                goToPage(1);
+            });
+            galleryItem.appendChild(galleryLink);
+            breadcrumb.appendChild(galleryItem);
+            
+            // Jika ada tag yang diklik
+            if (currentTag) {
+                var sep2 = document.createElement('span');
+                sep2.className = 'breadcrumb-separator';
+                sep2.textContent = '›';
+                breadcrumb.appendChild(sep2);
+                
+                var tagItem = document.createElement('span');
+                tagItem.className = 'breadcrumb-item';
+                var tagSpan = document.createElement('span');
+                tagSpan.className = 'breadcrumb-current';
+                tagSpan.textContent = currentTag;
+                tagItem.appendChild(tagSpan);
+                breadcrumb.appendChild(tagItem);
+            } else if (currentPage > 1) {
+                var sep3 = document.createElement('span');
+                sep3.className = 'breadcrumb-separator';
+                sep3.textContent = '›';
+                breadcrumb.appendChild(sep3);
+                
+                var pageItem = document.createElement('span');
+                pageItem.className = 'breadcrumb-item';
+                var pageSpan = document.createElement('span');
+                pageSpan.className = 'breadcrumb-current';
+                pageSpan.textContent = 'Page ' + currentPage;
+                pageItem.appendChild(pageSpan);
+                breadcrumb.appendChild(pageItem);
+            }
+        }
+        
         // Fungsi navigasi ke video dari tag
         function goToVideoFromTag(query) {
             var index = videoQueries.indexOf(query);
@@ -549,6 +680,9 @@ layout: null
             } else {
                 scrollToVideo(index);
             }
+            
+            // Update breadcrumb dengan tag
+            renderBreadcrumb(query);
         }
         
         // Fungsi scroll ke video dan highlight
@@ -627,11 +761,9 @@ layout: null
                 grid.appendChild(gridItem);
             }
             
-            // Update page indicator
             var indicator = document.getElementById('pageIndicator');
             indicator.textContent = 'Page ' + page + ' of ' + totalPages + ' (' + videoQueries.length + ' videos)';
             
-            // Update head tags
             updateHeadTags(page);
         }
         
@@ -645,7 +777,6 @@ layout: null
                 return;
             }
             
-            // Prev button
             var prevBtn = document.createElement('button');
             prevBtn.innerHTML = '‹';
             prevBtn.disabled = currentPage === 1;
@@ -655,7 +786,6 @@ layout: null
             });
             pagination.appendChild(prevBtn);
             
-            // Page numbers
             for (var i = 1; i <= totalPages; i++) {
                 (function(pageNum) {
                     var pageBtn = document.createElement('button');
@@ -670,7 +800,6 @@ layout: null
                 })(i);
             }
             
-            // Next button
             var nextBtn = document.createElement('button');
             nextBtn.innerHTML = '›';
             nextBtn.disabled = currentPage === totalPages;
@@ -688,6 +817,7 @@ layout: null
             updateURL(page);
             renderVideos(page);
             renderPagination(page);
+            renderBreadcrumb(null);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
@@ -698,13 +828,14 @@ layout: null
             updateHeadTags(currentPage);
             renderVideos(currentPage);
             renderPagination(currentPage);
+            renderBreadcrumb(null);
         });
         
         // Initial render
         renderVideos(currentPage);
         renderPagination(currentPage);
         renderTagCloud();
+        renderBreadcrumb(null);
     </script>
 </body>
 </html>
-    
