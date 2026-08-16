@@ -14,9 +14,6 @@
     <!-- Structured Data BreadcrumbList -->
     <script type="application/ld+json" id="breadcrumbSchema"></script>
     
-    <!-- Structured Data CollectionPage -->
-    <script type="application/ld+json" id="collectionSchema"></script>
-    
     <style>
         * {
             margin: 0;
@@ -102,6 +99,34 @@
         .breadcrumb-current {
             color: #FF9800;
             font-weight: 600;
+        }
+        .breadcrumb-tag-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .breadcrumb-tag {
+            display: inline-block;
+            text-decoration: none;
+            color: #999;
+            font-size: clamp(8px, 1.5vw, 10px);
+            font-weight: 500;
+            padding: 3px 10px;
+            border-radius: 12px;
+            border: 1px solid #222;
+            background: #1a1a1a;
+            transition: all .2s ease;
+            cursor: pointer;
+        }
+        .breadcrumb-tag:hover {
+            border-color: #FF9800;
+            color: #FF9800;
+        }
+        .breadcrumb-tag.active-tag {
+            border-color: #FF9800;
+            color: #FF9800;
+            background: #2a1a0a;
         }
         
         .grid {
@@ -346,6 +371,11 @@
         .tag-link:active {
             transform: scale(.95);
         }
+        .tag-link.active-tag {
+            border-color: #FF9800;
+            color: #FF9800;
+            background: #1a1a1a;
+        }
         
         @media (min-width: 768px) {
             body { padding: 16px }
@@ -394,6 +424,10 @@
             .tag-link { 
                 font-size: 13px; 
                 padding: 8px 18px;
+            }
+            .breadcrumb-tag {
+                font-size: 10px;
+                padding: 4px 12px;
             }
         }
         @media (min-width: 1024px) {
@@ -539,7 +573,14 @@
         var currentPage = urlState.page;
         var activeTag = urlState.tag;
         
-        // Update canonical tag - Page + Tag
+        // Get queries for current page
+        function getPageQueries(page) {
+            var start = (page - 1) * itemsPerPage;
+            var end = Math.min(start + itemsPerPage, videoQueries.length);
+            return videoQueries.slice(start, end);
+        }
+        
+        // Update canonical tag
         function updateCanonicalTag() {
             var canonicalTag = document.getElementById('canonicalTag');
             var url = new URL(window.location.href);
@@ -559,11 +600,11 @@
             canonicalTag.href = url.toString();
         }
         
-        // Update structured data
+        // Update structured data - BreadcrumbList with tags
         function updateStructuredData(page, tag) {
             var baseURL = window.location.origin + window.location.pathname;
+            var pageQueries = getPageQueries(page);
             
-            // BreadcrumbList
             var breadcrumbItems = [
                 {
                     "@type": "ListItem",
@@ -575,28 +616,30 @@
                     "@type": "ListItem",
                     "position": 2,
                     "name": "Video Gallery",
-                    "item": baseURL
+                    "item": baseURL + '?page=1'
                 }
             ];
             
             var position = 3;
             
+            // Tags di halaman ini
+            pageQueries.forEach(function(query) {
+                breadcrumbItems.push({
+                    "@type": "ListItem",
+                    "position": position,
+                    "name": query,
+                    "item": baseURL + '?page=' + page + '&tag=' + encodeURIComponent(query)
+                });
+                position++;
+            });
+            
+            // Page di akhir
             if (page > 1) {
                 breadcrumbItems.push({
                     "@type": "ListItem",
                     "position": position,
                     "name": "Page " + page,
                     "item": baseURL + '?page=' + page
-                });
-                position++;
-            }
-            
-            if (tag) {
-                breadcrumbItems.push({
-                    "@type": "ListItem",
-                    "position": position,
-                    "name": tag,
-                    "item": baseURL + (page > 1 ? '?page=' + page + '&tag=' : '?tag=') + encodeURIComponent(tag)
                 });
             }
             
@@ -607,32 +650,10 @@
             };
             
             document.getElementById('breadcrumbSchema').textContent = JSON.stringify(breadcrumbSchema);
-            
-            // CollectionPage - tanpa metadata video
-            var collectionName;
-            if (tag) {
-                collectionName = formatTitle(tag) + ' - Page ' + page + ' - ' + baseTitle;
-            } else if (page > 1) {
-                collectionName = baseTitle + ' - Page ' + page;
-            } else {
-                collectionName = baseTitle;
-            }
-            
-            var collectionSchema = {
-                "@context": "https://schema.org",
-                "@type": "CollectionPage",
-                "name": collectionName,
-                "description": tag ? 'Videos tagged with ' + tag + ' - Page ' + page : 'Collection of exclusive videos - Page ' + page,
-                "url": window.location.href,
-                "numberOfItems": videoQueries.length
-            };
-            
-            document.getElementById('collectionSchema').textContent = JSON.stringify(collectionSchema);
         }
         
-        // Update title, h1, meta description, dan structured data
+        // Update title, h1, meta description
         function updateHeadTags(page, tag) {
-            // Title dan H1 - Page selalu jelas terlihat
             var pageText = page > 1 ? ' - Page ' + page : '';
             
             if (tag) {
@@ -646,11 +667,7 @@
                 document.querySelector('h1').textContent = baseTitle;
             }
             
-            // Meta description dengan page number
-            var start = (page - 1) * itemsPerPage;
-            var end = Math.min(start + itemsPerPage, videoQueries.length);
-            var pageQueries = videoQueries.slice(start, end);
-            
+            var pageQueries = getPageQueries(page);
             var descriptions = pageQueries.map(function(query) {
                 return formatTitle(query);
             });
@@ -668,12 +685,11 @@
             
             document.getElementById('metaDescription').content = metaDescription;
             
-            // Update canonical & structured data
             updateCanonicalTag();
             updateStructuredData(page, tag);
         }
         
-        // Update URL tanpa reload
+        // Update URL
         function updateURL(page, tag) {
             var url = new URL(window.location);
             
@@ -693,20 +709,22 @@
             updateHeadTags(page, tag);
         }
         
-        // Generate breadcrumb
+        // Generate breadcrumb - Semua tag di halaman ini, lalu page di akhir
         function renderBreadcrumb(page, tag) {
             var breadcrumb = document.getElementById('breadcrumb');
             breadcrumb.innerHTML = '';
+            var pageQueries = getPageQueries(page);
             
+            // Home
             var homeItem = document.createElement('span');
             homeItem.className = 'breadcrumb-item';
             var homeLink = document.createElement('a');
-            homeLink.href = '?page=1';
+            homeLink.href = '/';
             homeLink.className = 'breadcrumb-link';
             homeLink.textContent = 'Home';
             homeLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                navigateTo(1, null);
+                window.location.href = '/';
             });
             homeItem.appendChild(homeLink);
             breadcrumb.appendChild(homeItem);
@@ -716,6 +734,7 @@
             sep1.textContent = '›';
             breadcrumb.appendChild(sep1);
             
+            // Video Gallery
             var galleryItem = document.createElement('span');
             galleryItem.className = 'breadcrumb-item';
             var galleryLink = document.createElement('a');
@@ -729,6 +748,35 @@
             galleryItem.appendChild(galleryLink);
             breadcrumb.appendChild(galleryItem);
             
+            // Tags di halaman ini
+            pageQueries.forEach(function(query) {
+                var sep = document.createElement('span');
+                sep.className = 'breadcrumb-separator';
+                sep.textContent = '›';
+                breadcrumb.appendChild(sep);
+                
+                var tagGroup = document.createElement('span');
+                tagGroup.className = 'breadcrumb-tag-group';
+                
+                var tagLink = document.createElement('a');
+                tagLink.href = '?page=' + page + '&tag=' + encodeURIComponent(query);
+                tagLink.className = 'breadcrumb-tag';
+                tagLink.textContent = query;
+                
+                if (query === tag) {
+                    tagLink.classList.add('active-tag');
+                }
+                
+                tagLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    goToVideoFromTag(query);
+                });
+                
+                tagGroup.appendChild(tagLink);
+                breadcrumb.appendChild(tagGroup);
+            });
+            
+            // Page di akhir
             if (page > 1) {
                 var sep2 = document.createElement('span');
                 sep2.className = 'breadcrumb-separator';
@@ -742,21 +790,6 @@
                 pageSpan.textContent = 'Page ' + page;
                 pageItem.appendChild(pageSpan);
                 breadcrumb.appendChild(pageItem);
-            }
-            
-            if (tag) {
-                var sep3 = document.createElement('span');
-                sep3.className = 'breadcrumb-separator';
-                sep3.textContent = '›';
-                breadcrumb.appendChild(sep3);
-                
-                var tagItem = document.createElement('span');
-                tagItem.className = 'breadcrumb-item';
-                var tagSpan = document.createElement('span');
-                tagSpan.className = 'breadcrumb-current';
-                tagSpan.textContent = tag;
-                tagItem.appendChild(tagSpan);
-                breadcrumb.appendChild(tagItem);
             }
         }
         
@@ -809,6 +842,11 @@
                 tagLink.className = 'tag-link';
                 tagLink.textContent = query;
                 tagLink.setAttribute('aria-label', 'Tag: ' + query);
+                
+                if (query === activeTag) {
+                    tagLink.classList.add('active-tag');
+                }
+                
                 tagLink.addEventListener('click', function(e) {
                     e.preventDefault();
                     goToVideoFromTag(query);
@@ -818,7 +856,7 @@
             });
         }
         
-        // Generate video grid for current page
+        // Generate video grid
         function renderVideos(page) {
             var grid = document.getElementById('videoGrid');
             grid.innerHTML = '';
@@ -913,6 +951,7 @@
             renderVideos(page);
             renderPagination(page);
             renderBreadcrumb(page, tag);
+            renderTagCloud();
             
             if (!tag) {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -929,6 +968,7 @@
             renderVideos(currentPage);
             renderPagination(currentPage);
             renderBreadcrumb(currentPage, activeTag);
+            renderTagCloud();
         });
         
         // Initial render
@@ -940,4 +980,4 @@
     </script>
 </body>
 </html>
-        
+    
