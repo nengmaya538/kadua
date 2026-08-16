@@ -613,11 +613,20 @@
             var end = Math.min(start + itemsPerPage, videoQueries.length);
             var pageQueries = videoQueries.slice(start, end);
             
+            var collectionName;
+            if (tag) {
+                collectionName = formatTitle(tag) + ' - Page ' + page + ' - ' + baseTitle;
+            } else if (page > 1) {
+                collectionName = baseTitle + ' - Page ' + page;
+            } else {
+                collectionName = baseTitle;
+            }
+            
             var collectionSchema = {
                 "@context": "https://schema.org",
                 "@type": "CollectionPage",
-                "name": tag ? formatTitle(tag) + ' - ' + baseTitle : baseTitle,
-                "description": tag ? 'Videos tagged with ' + tag : 'Collection of exclusive videos',
+                "name": collectionName,
+                "description": tag ? 'Videos tagged with ' + tag + ' - Page ' + page : 'Collection of exclusive videos - Page ' + page,
                 "url": window.location.href,
                 "numberOfItems": pageQueries.length,
                 "hasPart": pageQueries.map(function(query, idx) {
@@ -635,17 +644,21 @@
         
         // Update title, h1, meta description, dan structured data
         function updateHeadTags(page, tag) {
+            // Title dan H1 - Page selalu jelas terlihat
+            var pageText = page > 1 ? ' - Page ' + page : '';
+            
             if (tag) {
-                document.title = formatTitle(tag) + ' - ' + baseTitle;
-                document.querySelector('h1').textContent = formatTitle(tag) + ' - ' + baseTitle;
+                document.title = formatTitle(tag) + pageText + ' - ' + baseTitle;
+                document.querySelector('h1').textContent = formatTitle(tag) + pageText + ' - ' + baseTitle;
             } else if (page > 1) {
-                document.title = baseTitle + ' - Page ' + page;
-                document.querySelector('h1').textContent = baseTitle + ' - Page ' + page;
+                document.title = baseTitle + pageText;
+                document.querySelector('h1').textContent = baseTitle + pageText;
             } else {
                 document.title = baseTitle;
                 document.querySelector('h1').textContent = baseTitle;
             }
             
+            // Meta description dengan page number
             var start = (page - 1) * itemsPerPage;
             var end = Math.min(start + itemsPerPage, videoQueries.length);
             var pageQueries = videoQueries.slice(start, end);
@@ -656,9 +669,9 @@
             
             var metaDescription;
             if (tag) {
-                metaDescription = 'Watch videos tagged with ' + tag + '. ' + descriptions.join(', ') + '. Video Gallery collection.';
+                metaDescription = 'Page ' + page + ' - Watch videos tagged with ' + tag + '. ' + descriptions.join(', ') + '. Video Gallery collection.';
             } else {
-                metaDescription = 'Watch: ' + descriptions.join(', ') + '. Video Gallery collection.';
+                metaDescription = 'Page ' + page + ' - Watch: ' + descriptions.join(', ') + '. Video Gallery collection.';
             }
             
             if (metaDescription.length > 155) {
@@ -939,4 +952,3 @@
     </script>
 </body>
 </html>
-    
