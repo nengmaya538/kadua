@@ -5,11 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Gallery</title>
     
-    <!-- Dynamic Canonical Tag -->
+    <!-- Dynamic Canonical Tag (Page + Tag) -->
     <link rel="canonical" id="canonicalTag" href="">
     
     <!-- Dynamic Meta Description -->
     <meta name="description" id="metaDescription" content="">
+    
+    <!-- Structured Data BreadcrumbList -->
+    <script type="application/ld+json" id="breadcrumbSchema"></script>
+    
+    <!-- Structured Data CollectionPage -->
+    <script type="application/ld+json" id="collectionSchema"></script>
     
     <style>
         * {
@@ -412,35 +418,6 @@
             }
         }
     </style>
-    
-    <script>
-        // ============ DYNAMIC CANONICAL TAG ============
-        function updateCanonicalTag() {
-            var canonicalTag = document.getElementById('canonicalTag');
-            var url = new URL(window.location.href);
-            var page = url.searchParams.get('page');
-            var tag = url.searchParams.get('tag');
-            
-            // Selalu prioritaskan page
-            if (page && page !== '1') {
-                url.searchParams.set('page', page);
-            } else {
-                url.searchParams.delete('page');
-            }
-            
-            // Hapus tag dari canonical
-            url.searchParams.delete('tag');
-            
-            canonicalTag.href = url.toString();
-        }
-        
-        updateCanonicalTag();
-        
-        window.addEventListener('popstate', function() {
-            updateCanonicalTag();
-        });
-    </script>
-    
 </head>
 <body>
     <h1>Video Gallery</h1>
@@ -562,9 +539,102 @@
         var currentPage = urlState.page;
         var activeTag = urlState.tag;
         
-        // Update title, h1, dan meta description berdasarkan halaman dan tag
+        // Update canonical tag - Page + Tag
+        function updateCanonicalTag() {
+            var canonicalTag = document.getElementById('canonicalTag');
+            var url = new URL(window.location.href);
+            
+            if (currentPage > 1) {
+                url.searchParams.set('page', currentPage);
+            } else {
+                url.searchParams.delete('page');
+            }
+            
+            if (activeTag) {
+                url.searchParams.set('tag', activeTag);
+            } else {
+                url.searchParams.delete('tag');
+            }
+            
+            canonicalTag.href = url.toString();
+        }
+        
+        // Update structured data
+        function updateStructuredData(page, tag) {
+            var baseURL = window.location.origin + window.location.pathname;
+            
+            // BreadcrumbList
+            var breadcrumbItems = [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Home",
+                    "item": baseURL
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Video Gallery",
+                    "item": baseURL
+                }
+            ];
+            
+            var position = 3;
+            
+            if (page > 1) {
+                breadcrumbItems.push({
+                    "@type": "ListItem",
+                    "position": position,
+                    "name": "Page " + page,
+                    "item": baseURL + '?page=' + page
+                });
+                position++;
+            }
+            
+            if (tag) {
+                breadcrumbItems.push({
+                    "@type": "ListItem",
+                    "position": position,
+                    "name": tag,
+                    "item": baseURL + (page > 1 ? '?page=' + page + '&tag=' : '?tag=') + encodeURIComponent(tag)
+                });
+            }
+            
+            var breadcrumbSchema = {
+                "@context": "https://schema.org",
+                "@type": "BreadcrumbList",
+                "itemListElement": breadcrumbItems
+            };
+            
+            document.getElementById('breadcrumbSchema').textContent = JSON.stringify(breadcrumbSchema);
+            
+            // CollectionPage
+            var start = (page - 1) * itemsPerPage;
+            var end = Math.min(start + itemsPerPage, videoQueries.length);
+            var pageQueries = videoQueries.slice(start, end);
+            
+            var collectionSchema = {
+                "@context": "https://schema.org",
+                "@type": "CollectionPage",
+                "name": tag ? formatTitle(tag) + ' - ' + baseTitle : baseTitle,
+                "description": tag ? 'Videos tagged with ' + tag : 'Collection of exclusive videos',
+                "url": window.location.href,
+                "numberOfItems": pageQueries.length,
+                "hasPart": pageQueries.map(function(query, idx) {
+                    return {
+                        "@type": "VideoObject",
+                        "name": formatTitle(query),
+                        "url": 'https://pict.ngaloco.my.id/categories/?q=' + encodeURIComponent(query),
+                        "position": start + idx + 1
+                    };
+                })
+            };
+            
+            document.getElementById('collectionSchema').textContent = JSON.stringify(collectionSchema);
+        }
+        
+        // Update title, h1, meta description, dan structured data
         function updateHeadTags(page, tag) {
-            // Update title
             if (tag) {
                 document.title = formatTitle(tag) + ' - ' + baseTitle;
                 document.querySelector('h1').textContent = formatTitle(tag) + ' - ' + baseTitle;
@@ -576,7 +646,6 @@
                 document.querySelector('h1').textContent = baseTitle;
             }
             
-            // Update meta description
             var start = (page - 1) * itemsPerPage;
             var end = Math.min(start + itemsPerPage, videoQueries.length);
             var pageQueries = videoQueries.slice(start, end);
@@ -597,20 +666,22 @@
             }
             
             document.getElementById('metaDescription').content = metaDescription;
+            
+            // Update canonical & structured data
+            updateCanonicalTag();
+            updateStructuredData(page, tag);
         }
         
-        // Update URL tanpa reload - page dulu, tag kemudian
+        // Update URL tanpa reload
         function updateURL(page, tag) {
             var url = new URL(window.location);
             
-            // Page selalu diutamakan
             if (page > 1) {
                 url.searchParams.set('page', page);
             } else {
                 url.searchParams.delete('page');
             }
             
-            // Tag setelah page
             if (tag) {
                 url.searchParams.set('tag', tag);
             } else {
@@ -618,7 +689,6 @@
             }
             
             window.history.pushState({}, '', url);
-            updateCanonicalTag();
             updateHeadTags(page, tag);
         }
         
@@ -627,11 +697,10 @@
             var breadcrumb = document.getElementById('breadcrumb');
             breadcrumb.innerHTML = '';
             
-            // Home
             var homeItem = document.createElement('span');
             homeItem.className = 'breadcrumb-item';
             var homeLink = document.createElement('a');
-            homeLink.href = '#';
+            homeLink.href = '?page=1';
             homeLink.className = 'breadcrumb-link';
             homeLink.textContent = 'Home';
             homeLink.addEventListener('click', function(e) {
@@ -641,17 +710,15 @@
             homeItem.appendChild(homeLink);
             breadcrumb.appendChild(homeItem);
             
-            // Separator
             var sep1 = document.createElement('span');
             sep1.className = 'breadcrumb-separator';
             sep1.textContent = '›';
             breadcrumb.appendChild(sep1);
             
-            // Video Gallery
             var galleryItem = document.createElement('span');
             galleryItem.className = 'breadcrumb-item';
             var galleryLink = document.createElement('a');
-            galleryLink.href = '#';
+            galleryLink.href = '?page=1';
             galleryLink.className = 'breadcrumb-link';
             galleryLink.textContent = 'Video Gallery';
             galleryLink.addEventListener('click', function(e) {
@@ -661,7 +728,6 @@
             galleryItem.appendChild(galleryLink);
             breadcrumb.appendChild(galleryItem);
             
-            // Page (jika > 1)
             if (page > 1) {
                 var sep2 = document.createElement('span');
                 sep2.className = 'breadcrumb-separator';
@@ -677,7 +743,6 @@
                 breadcrumb.appendChild(pageItem);
             }
             
-            // Tag (jika ada)
             if (tag) {
                 var sep3 = document.createElement('span');
                 sep3.className = 'breadcrumb-separator';
@@ -735,8 +800,11 @@
             tagCloud.innerHTML = '';
             
             videoQueries.forEach(function(query, index) {
+                var pageForTag = Math.floor(index / itemsPerPage) + 1;
+                var tagURL = '?page=' + pageForTag + '&tag=' + encodeURIComponent(query);
+                
                 var tagLink = document.createElement('a');
-                tagLink.href = '?tag=' + encodeURIComponent(query);
+                tagLink.href = tagURL;
                 tagLink.className = 'tag-link';
                 tagLink.textContent = query;
                 tagLink.setAttribute('aria-label', 'Tag: ' + query);
@@ -856,7 +924,6 @@
             currentPage = state.page;
             activeTag = state.tag;
             
-            updateCanonicalTag();
             updateHeadTags(currentPage, activeTag);
             renderVideos(currentPage);
             renderPagination(currentPage);
@@ -872,3 +939,4 @@
     </script>
 </body>
 </html>
+    
