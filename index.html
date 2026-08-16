@@ -608,11 +608,7 @@
             
             document.getElementById('breadcrumbSchema').textContent = JSON.stringify(breadcrumbSchema);
             
-            // CollectionPage
-            var start = (page - 1) * itemsPerPage;
-            var end = Math.min(start + itemsPerPage, videoQueries.length);
-            var pageQueries = videoQueries.slice(start, end);
-            
+            // CollectionPage - tanpa metadata video
             var collectionName;
             if (tag) {
                 collectionName = formatTitle(tag) + ' - Page ' + page + ' - ' + baseTitle;
@@ -628,15 +624,7 @@
                 "name": collectionName,
                 "description": tag ? 'Videos tagged with ' + tag + ' - Page ' + page : 'Collection of exclusive videos - Page ' + page,
                 "url": window.location.href,
-                "numberOfItems": pageQueries.length,
-                "hasPart": pageQueries.map(function(query, idx) {
-                    return {
-                        "@type": "VideoObject",
-                        "name": formatTitle(query),
-                        "url": 'https://pict.ngaloco.my.id/categories/?q=' + encodeURIComponent(query),
-                        "position": start + idx + 1
-                    };
-                })
+                "numberOfItems": videoQueries.length
             };
             
             document.getElementById('collectionSchema').textContent = JSON.stringify(collectionSchema);
@@ -952,3 +940,4 @@
     </script>
 </body>
 </html>
+        
