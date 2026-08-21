@@ -1,6 +1,350 @@
-<iframe
-  src="https://streamtape.com/e/Bap4ZDXYjriyD2X/?autoplay=1&muted=1"
-  style="width:100%; aspect-ratio:16/9; border:0; display:block;"
-  allow="autoplay; fullscreen"
-  allowfullscreen>
-</iframe>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VAST Player</title>
+    <style>
+        .vast-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        #vast-video {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            cursor: pointer;
+            object-fit: contain;
+        }
+        #vast-video::-webkit-media-controls {
+            display: none !important;
+        }
+        #vast-video::-webkit-media-controls-enclosure {
+            display: none !important;
+        }
+        #vast-video::-webkit-media-controls-panel {
+            display: none !important;
+        }
+        #vast-video::-webkit-media-controls-play-button {
+            display: none !important;
+        }
+        #vast-video::-webkit-media-controls-start-playback-button {
+            display: none !important;
+        }
+
+        #youtube-iframe {
+            display: none;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+        }
+
+        .vast-topbar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 40px;
+            padding: 6px 6px 6px 18px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            user-select: none;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            font-family: Arial, sans-serif;
+        }
+        .vast-topbar * { pointer-events: auto; }
+
+        .vast-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .vast-badge svg {
+            width: 14px;
+            height: 14px;
+            fill: none;
+            stroke: rgba(255,255,255,0.7);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .vast-badge span {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .vast-separator {
+            width: 1px;
+            height: 20px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .vast-countdown {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .vast-countdown .vast-icon {
+            font-size: 14px;
+            opacity: 0.6;
+        }
+        .vast-countdown .vast-number {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            min-width: 24px;
+            text-align: center;
+        }
+        .vast-countdown .vast-text {
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.4);
+        }
+        .vast-countdown .vast-dot {
+            width: 5px;
+            height: 5px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: inline-block;
+            animation: vast-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes vast-pulse {
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.3); }
+        }
+
+        .vast-close {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.95);
+            border: none;
+            border-radius: 40px;
+            padding: 8px 18px 8px 14px;
+            color: #1a1a1a;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: Arial, sans-serif;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .vast-close:hover {
+            background: #fff;
+            transform: scale(1.04);
+        }
+        .vast-close:active {
+            transform: scale(0.95);
+        }
+        .vast-close.vast-show {
+            display: flex;
+            animation: vast-fadeIn 0.3s ease;
+        }
+        .vast-close svg {
+            width: 16px;
+            height: 16px;
+            stroke: #1a1a1a;
+            stroke-width: 2.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        @keyframes vast-fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .vast-topbar.vast-hide .vast-countdown {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="vast-wrapper">
+    <!-- TOPBAR -->
+    <div class="vast-topbar" id="vastTopbar">
+        <div class="vast-badge">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4l3 3" />
+            </svg>
+            <span>Sponsored</span>
+        </div>
+        <span class="vast-separator"></span>
+        <div class="vast-countdown">
+            <span class="vast-icon">⏳</span>
+            <span class="vast-number" id="vastNumber">20</span>
+            <span class="vast-text">sec</span>
+            <span class="vast-dot"></span>
+        </div>
+        <span class="vast-separator" id="vastSepClose"></span>
+        <button class="vast-close" id="vastClose">
+            <svg viewBox="0 0 24 24">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            Close
+        </button>
+    </div>
+
+    <!-- VIDEO VAST (PREROLL) -->
+    <video id="vast-video" playsinline muted autoplay></video>
+
+    <!-- YOUTUBE IFRAME (KONTEN UTAMA) -->
+    <iframe id="youtube-iframe" 
+        src="https://www.youtube.com/embed/ON7KfCvXlMI?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&playsinline=1"
+        allow="autoplay; encrypted-media; fullscreen"
+        allowfullscreen>
+    </iframe>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        var video = document.getElementById('vast-video');
+        var youtube = document.getElementById('youtube-iframe');
+        var closeBtn = document.getElementById('vastClose');
+        var numberEl = document.getElementById('vastNumber');
+        var topbar = document.getElementById('vastTopbar');
+        var sepClose = document.getElementById('vastSepClose');
+
+        var VAST_URL = 'https://vast.vstserv.com/vast?spot_id=2026771';
+        var YOUTUBE_URL = 'https://www.youtube.com/embed/ON7KfCvXlMI?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&playsinline=1';
+
+        var countdownSeconds = 20;
+        var countdownTimer = null;
+        var countdownStarted = false;
+        var adTimer = null;
+
+        function playYouTube() {
+            video.style.display = 'none';
+            youtube.style.display = 'block';
+            youtube.src = YOUTUBE_URL;
+        }
+
+        function playVideo(src, isMuted, withControls) {
+            video.pause();
+            video.src = src;
+            video.muted = (isMuted !== undefined) ? isMuted : true;
+            video.controls = (withControls !== undefined) ? withControls : false;
+            video.load();
+            video.play().catch(function() {});
+        }
+
+        function startCountdown() {
+            if (countdownStarted) return;
+            countdownStarted = true;
+            countdownSeconds = 20;
+            numberEl.textContent = countdownSeconds;
+
+            countdownTimer = setInterval(function() {
+                countdownSeconds--;
+                if (countdownSeconds > 0) {
+                    numberEl.textContent = countdownSeconds;
+                } else {
+                    clearInterval(countdownTimer);
+                    topbar.classList.add('vast-hide');
+                    closeBtn.classList.add('vast-show');
+                    if (sepClose) sepClose.style.display = 'block';
+                }
+            }, 1000);
+        }
+
+        fetch(VAST_URL)
+            .then(function(response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.text();
+            })
+            .then(function(xmlText) {
+                var parser = new DOMParser();
+                var xml = parser.parseFromString(xmlText, 'text/xml');
+
+                if (xml.querySelector('parsererror')) throw new Error('XML error');
+
+                var mediaFile = xml.querySelector('MediaFile[type="video/mp4"]');
+                var durationNode = xml.querySelector('Duration');
+
+                if (!mediaFile) throw new Error('No media file');
+
+                var videoUrl = mediaFile.textContent.trim();
+                if (!videoUrl) throw new Error('Empty URL');
+
+                playVideo(videoUrl, true, false);
+                startCountdown();
+
+                var adDuration = 15;
+                if (durationNode) {
+                    var parts = durationNode.textContent.split(':');
+                    adDuration = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+                    if (adDuration < 1) adDuration = 15;
+                }
+
+                var adPlayed = 0;
+                adTimer = setInterval(function() {
+                    adPlayed++;
+                    if (adPlayed >= adDuration) {
+                        clearInterval(adTimer);
+                        playYouTube();
+                    }
+                }, 1000);
+            })
+            .catch(function() {
+                playYouTube();
+                startCountdown();
+            });
+
+        video.addEventListener('error', function() {
+            if (video.src && video.src !== '') {
+                playYouTube();
+                startCountdown();
+            }
+        });
+
+        video.addEventListener('click', function() {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.documentElement.requestFullscreen().catch(function() {});
+            }
+        });
+
+        closeBtn.addEventListener('click', function() {
+            document.querySelector('.vast-wrapper').style.display = 'none';
+            video.pause();
+            video.src = '';
+            youtube.src = '';
+            if (countdownTimer) clearInterval(countdownTimer);
+            if (adTimer) clearInterval(adTimer);
+        });
+
+        setTimeout(function() {
+            if (!countdownStarted) {
+                playYouTube();
+                startCountdown();
+            }
+        }, 10000);
+
+    })();
+</script>
+
+</body>
+</html>
