@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>VAST + YouTube Popup</title>
+<title>Video Player</title>
 
 <style>
 html,
@@ -16,6 +16,10 @@ body {
     background: #000;
 }
 
+/* ================================
+   FULLSCREEN POPUP
+================================ */
+
 #vastPopup {
     position: fixed;
     inset: 0;
@@ -24,6 +28,10 @@ body {
     background: #000;
     z-index: 2147483647;
 }
+
+/* ================================
+   VAST VIDEO
+================================ */
 
 #vastVideo,
 #youtubeFrame {
@@ -40,9 +48,17 @@ body {
     object-fit: contain;
 }
 
+/* ================================
+   YOUTUBE
+================================ */
+
 #youtubeFrame {
     display: none;
 }
+
+/* ================================
+   STATUS
+================================ */
 
 #vastStatus {
     position: absolute;
@@ -55,12 +71,17 @@ body {
     background: rgba(0,0,0,.65);
     color: #fff;
 
-    font: 13px Arial,sans-serif;
+    font: 13px Arial, sans-serif;
     border-radius: 4px;
 }
 
+/* ================================
+   CLOSE BUTTON
+================================ */
+
 #closeVastPopup {
     position: absolute;
+
     top: 15px;
     right: 15px;
 
@@ -81,6 +102,7 @@ body {
     line-height: 42px;
 
     padding: 0;
+
     cursor: pointer;
 }
 
@@ -92,8 +114,13 @@ body {
 
 <body>
 
+<!-- =================================
+     FULLSCREEN VIDEO POPUP
+================================= -->
+
 <div id="vastPopup">
 
+    <!-- VAST VIDEO -->
     <video
         id="vastVideo"
         playsinline
@@ -101,6 +128,8 @@ body {
         preload="auto">
     </video>
 
+
+    <!-- YOUTUBE VIDEO -->
     <iframe
         id="youtubeFrame"
         src=""
@@ -108,10 +137,14 @@ body {
         allowfullscreen>
     </iframe>
 
+
+    <!-- STATUS -->
     <div id="vastStatus">
-        Memuat iklan...
+        Loading advertisement...
     </div>
 
+
+    <!-- CLOSE BUTTON -->
     <button
         id="closeVastPopup"
         type="button"
@@ -124,7 +157,7 @@ body {
 
 <script>
 /* =====================================================
-   CONFIG
+   CONFIGURATION
 ===================================================== */
 
 const VAST_URL =
@@ -135,7 +168,7 @@ const YOUTUBE_URL =
 
 
 /* =====================================================
-   ELEMENT
+   ELEMENTS
 ===================================================== */
 
 const popup =
@@ -155,8 +188,10 @@ const closeButton =
 
 
 /* =====================================================
-   CLOSE BUTTON
-   BENAR-BENAR TERPISAH DARI VAST
+   CLOSE BUTTON TIMER
+   The close button appears after 20 seconds.
+   This timer is completely independent
+   from the VAST advertisement.
 ===================================================== */
 
 setTimeout(function () {
@@ -174,13 +209,21 @@ setTimeout(function () {
 
 closeButton.addEventListener("click", function () {
 
+    /* Stop VAST video */
+
     video.pause();
 
     video.removeAttribute("src");
 
     video.load();
 
+
+    /* Stop YouTube */
+
     youtube.src = "about:blank";
+
+
+    /* Remove popup */
 
     popup.remove();
 
@@ -188,7 +231,7 @@ closeButton.addEventListener("click", function () {
 
 
 /* =====================================================
-   XML HELPERS
+   CLEAN URL
 ===================================================== */
 
 function cleanURL(value) {
@@ -203,45 +246,21 @@ function cleanURL(value) {
 }
 
 
+/* =====================================================
+   ABSOLUTE URL
+===================================================== */
+
 function absoluteURL(url, base) {
 
     try {
+
         return new URL(url, base).href;
+
     } catch (e) {
+
         return url;
+
     }
-
-}
-
-
-/* =====================================================
-   TRACKING
-===================================================== */
-
-function fireTracking(nodes) {
-
-    nodes.forEach(function (node) {
-
-        const url =
-            cleanURL(node.textContent);
-
-        if (!url) return;
-
-        /*
-         * Image beacon.
-         * Tidak mengganggu player.
-         */
-
-        const img =
-            new Image();
-
-        img.src =
-            absoluteURL(
-                url,
-                VAST_URL
-            );
-
-    });
 
 }
 
@@ -257,21 +276,15 @@ function findMediaFile(xml) {
             xml.querySelectorAll("MediaFile")
         );
 
+
     if (!files.length) {
         return null;
     }
 
 
     /*
-     * Prioritas:
-     *
-     * 1. MP4
-     * 2. video/mp4
-     * 3. file lain
+     * Prefer MP4.
      */
-
-    let selected = null;
-
 
     for (const file of files) {
 
@@ -293,41 +306,35 @@ function findMediaFile(xml) {
             /\.mp4(\?|$)/i.test(url)
         ) {
 
-            selected = url;
-
-            break;
+            return url;
 
         }
 
     }
 
 
-    if (!selected) {
+    /*
+     * Fallback to first available MediaFile.
+     */
 
-        for (const file of files) {
+    for (const file of files) {
 
-            const url =
-                cleanURL(file.textContent);
+        const url =
+            cleanURL(file.textContent);
 
-            if (url) {
-
-                selected = url;
-
-                break;
-
-            }
-
+        if (url) {
+            return url;
         }
 
     }
 
 
-    return selected;
+    return null;
 }
 
 
 /* =====================================================
-   GET WRAPPER URL
+   FIND VAST WRAPPER
 ===================================================== */
 
 function findWrapperURL(xml) {
@@ -337,9 +344,11 @@ function findWrapperURL(xml) {
             "VASTAdTagURI"
         );
 
+
     if (!node) {
         return null;
     }
+
 
     return cleanURL(
         node.textContent
@@ -348,7 +357,7 @@ function findWrapperURL(xml) {
 
 
 /* =====================================================
-   LOAD VAST XML
+   FETCH VAST
 ===================================================== */
 
 async function fetchVAST(url) {
@@ -384,14 +393,14 @@ async function fetchVAST(url) {
     if (!text) {
 
         throw new Error(
-            "VAST response kosong"
+            "Empty VAST response"
         );
 
     }
 
 
     console.log(
-        "[VAST] Response diterima:",
+        "[VAST] Response received:",
         text.substring(0, 500)
     );
 
@@ -408,7 +417,7 @@ async function fetchVAST(url) {
 
 
     /*
-     * Cek XML parser error
+     * Check XML parser error.
      */
 
     if (
@@ -418,7 +427,7 @@ async function fetchVAST(url) {
     ) {
 
         throw new Error(
-            "XML VAST tidak valid"
+            "Invalid VAST XML"
         );
 
     }
@@ -430,7 +439,7 @@ async function fetchVAST(url) {
 
 /* =====================================================
    RESOLVE VAST
-   INLINE + WRAPPER
+   Supports Inline + Wrapper
 ===================================================== */
 
 async function resolveVAST(startURL) {
@@ -438,10 +447,9 @@ async function resolveVAST(startURL) {
     let currentURL =
         startURL;
 
-    let lastXML = null;
 
     /*
-     * Maksimal 5 wrapper
+     * Maximum 5 wrapper levels.
      */
 
     for (
@@ -451,7 +459,7 @@ async function resolveVAST(startURL) {
     ) {
 
         status.textContent =
-            "Memuat iklan...";
+            "Loading advertisement...";
 
 
         const xml =
@@ -460,11 +468,8 @@ async function resolveVAST(startURL) {
             );
 
 
-        lastXML = xml;
-
-
         /*
-         * Cari MediaFile
+         * Try to find MediaFile.
          */
 
         const mediaURL =
@@ -474,26 +479,29 @@ async function resolveVAST(startURL) {
         if (mediaURL) {
 
             console.log(
-                "[VAST] Media ditemukan:",
+                "[VAST] Media found:",
                 mediaURL
             );
 
 
             return {
+
                 xml: xml,
+
                 mediaURL:
                     absoluteURL(
                         mediaURL,
                         currentURL
                     )
+
             };
 
         }
 
 
         /*
-         * Kalau tidak ada MediaFile,
-         * coba Wrapper
+         * No MediaFile.
+         * Try VAST Wrapper.
          */
 
         const wrapperURL =
@@ -503,7 +511,7 @@ async function resolveVAST(startURL) {
         if (!wrapperURL) {
 
             throw new Error(
-                "Tidak ada MediaFile dan Wrapper"
+                "No MediaFile or VAST Wrapper found"
             );
 
         }
@@ -517,7 +525,7 @@ async function resolveVAST(startURL) {
 
 
         console.log(
-            "[VAST] Mengikuti Wrapper:",
+            "[VAST] Following Wrapper:",
             currentURL
         );
 
@@ -525,7 +533,7 @@ async function resolveVAST(startURL) {
 
 
     throw new Error(
-        "Terlalu banyak VAST Wrapper"
+        "Too many VAST Wrapper levels"
     );
 }
 
@@ -537,19 +545,26 @@ async function resolveVAST(startURL) {
 function showYouTube() {
 
     console.log(
-        "[PLAYER] Menampilkan YouTube"
+        "[PLAYER] Showing YouTube"
     );
 
 
+    /* Stop VAST */
+
     video.pause();
+
 
     video.style.display =
         "none";
 
 
+    /* Hide status */
+
     status.style.display =
         "none";
 
+
+    /* Load YouTube */
 
     youtube.src =
         YOUTUBE_URL;
@@ -561,7 +576,7 @@ function showYouTube() {
 
 
 /* =====================================================
-   START VAST VIDEO
+   PLAY VAST
 ===================================================== */
 
 async function playVAST() {
@@ -569,8 +584,12 @@ async function playVAST() {
     try {
 
         status.textContent =
-            "Memuat iklan...";
+            "Loading advertisement...";
 
+
+        /*
+         * Resolve VAST Inline / Wrapper.
+         */
 
         const result =
             await resolveVAST(
@@ -579,13 +598,13 @@ async function playVAST() {
 
 
         console.log(
-            "[VAST] Final Media:",
+            "[VAST] Final media:",
             result.mediaURL
         );
 
 
         /*
-         * Pasang video
+         * Load advertisement.
          */
 
         video.src =
@@ -602,22 +621,27 @@ async function playVAST() {
 
 
         status.textContent =
-            "Iklan sedang diputar...";
+            "Advertisement playing...";
 
 
         /*
-         * Play
+         * Start playback.
          */
 
         await video.play();
 
 
         console.log(
-            "[VAST] Playback dimulai"
+            "[VAST] Playback started"
         );
 
 
     } catch (error) {
+
+        /*
+         * Technical errors are kept
+         * in the browser console.
+         */
 
         console.error(
             "[VAST] ERROR:",
@@ -626,17 +650,16 @@ async function playVAST() {
 
 
         /*
-         * Jangan langsung menyembunyikan
-         * popup.
+         * User-facing message.
          */
 
         status.textContent =
-            "Iklan tidak tersedia";
+            "Advertisement unavailable";
 
 
         /*
-         * Beri waktu sebentar supaya
-         * error mudah terlihat saat test.
+         * Continue to YouTube
+         * after a short delay.
          */
 
         setTimeout(function () {
@@ -651,7 +674,7 @@ async function playVAST() {
 
 
 /* =====================================================
-   VAST EVENTS
+   VAST FINISHED
 ===================================================== */
 
 video.addEventListener(
@@ -659,8 +682,9 @@ video.addEventListener(
     function () {
 
         console.log(
-            "[VAST] Iklan selesai"
+            "[VAST] Advertisement finished"
         );
+
 
         showYouTube();
 
@@ -668,14 +692,19 @@ video.addEventListener(
 );
 
 
+/* =====================================================
+   VAST PLAYBACK ERROR
+===================================================== */
+
 video.addEventListener(
     "error",
     function () {
 
         console.error(
-            "[VAST] Video playback error",
+            "[VAST] Video playback error:",
             video.error
         );
+
 
         showYouTube();
 
